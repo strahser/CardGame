@@ -1,0 +1,33 @@
+{% load static %}
+
+<div class="action-buttons" style="display: flex; justify-content: center;">
+    {% if current_hero %}
+        <div style="margin: 5px;">
+             {% for monster in monsters %}
+                <form method="post" action="{% url 'character_action' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="target_index" value="{{ forloop.counter0 }}">
+                    <input type="hidden" name="target_type" value="monster">
+                    <button type="submit" name="action" value="attack">Attack {{ monster.name }}</button>
+                </form>
+            {% endfor %}
+            {% if current_hero.skills.all %}
+                <form method="post" action="{% url 'character_action' %}">
+                    {% csrf_token %}
+                    <label for="skill_index">Skill:</label>
+                    <select name="skill_index" id="skill_index">
+                        {% for skill in current_hero.skills.all %}
+                            <option value="{{ forloop.counter0 }}">{{ skill.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" name="target_type" value="monster">
+                    <button type="submit" name="action" value="skill">Use Skill</button>
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if current_character_index >= heroes|length %}
+        <p>No actions for Monsters</p>
+    {% endif %}
+</div>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Text RPG{% endblock %}</title>
+    <style>
+       body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center;}
+       .card-container { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 20px;}
+       .card { border: 1px solid #ccc; padding: 10px; margin: 10px; width: 200px; text-align: center;}
+       .battle-log { border: 1px solid #ccc; padding: 10px; margin-top: 20px; width: 80%; max-height: 300px; overflow-y: auto;}
+       .action-buttons { display: flex; justify-content: center; margin-top: 10px;}
+       .action-buttons button { margin: 5px;}
+        {% csrf_token %}
+    </style>
+    {% block head %}
+    {% endblock %}
+</head>
+<body>
+    {% block content %}
+    {% endblock %}
+</body>
+</html>

@@ -1,0 +1,17 @@
+{% load static %}
+{% for hero in heroes %}
+    <div class="card">
+        <h3>{{ hero.name }} (Level: {{ hero.level }})</h3>
+        <p>Health: {{ hero.health }}/{{ hero.max_health }}</p>
+        <p>Mana: {{ hero.mana }}</p>
+        <p>Strength: {{ hero.strength }}</p>
+        <p>Armor: {{ hero.armor }}</p>
+        <p>Initiative: {{ hero.initiative }}</p>
+        <p>Skills:</p>
+        <ul>
+            {% for skill in hero.skills.all %}
+                <li>{{ skill.name }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endfor %}

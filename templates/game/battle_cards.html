@@ -1,0 +1,12 @@
+{% load static %}
+
+<div class="row" style="display: flex; justify-content: space-between;">
+    <div class="col" style="flex: 0 0 auto; margin-right: 10px;">
+        <h2>Heroes</h2>
+        {% include 'battle_hero_cards.html' %}
+    </div>
+    <div class="col" style="flex: 0 0 auto; margin-left: 10px;">
+        <h2>Monsters</h2>
+        {% include 'battle_monster_cards.html' %}
+    </div>
+</div>

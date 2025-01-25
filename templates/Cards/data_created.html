@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Результат создания данных</title>
+     <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+         a {
+             color: #007bff;
+             text-decoration: none;
+         }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Результат создания данных</h1>
+    <p>{{ message }}</p>
+    <a href="{% url 'start_game' %}">Начать игру</a>
+</body>
+</html>

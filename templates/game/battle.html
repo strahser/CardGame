@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Game</h1>
+    <p style="text-align: center;">Current turn: {{ current_character_name }}</p>
+    {% include 'battle_actions.html' %}
+    {% include 'battle_cards.html' %}
+    <div class="battle_log">
+        <h2>Battle Log</h2>
+        {% for log in battle_log %}
+            <p>{{ log }}</p>
+        {% endfor %}
+    </div>
+{% endblock %}

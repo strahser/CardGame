@@ -1,0 +1,16 @@
+{% load static %}
+{% for monster in monsters %}
+    <div class="card">
+        <h3>{{ monster.name }} (Level: {{ monster.level }})</h3>
+        <p>Health: {{ monster.health }}/{{ monster.max_health }}</p>
+        <p>Strength: {{ monster.strength }}</p>
+        <p>Armor: {{ monster.armor }}</p>
+        <p>Initiative: {{ monster.initiative }}</p>
+        <p>Skills:</p>
+        <ul>
+            {% for skill in monster.skills.all %}
+                <li>{{ skill.name }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endfor %}

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Text RPG - Battle End{% endblock %}
+
+{% block content %}
+    <h1>Battle Results</h1>
+    <p>Дней в игре: {{ user.days_in_game }}</p>
+    <p>Побед: {{ user.wins }}</p>
+    <p>Поражений: {{ user.losses }}</p>
+    <h2>Лог битвы</h2>
+    <div class="battle-log">
+        {% for line in battle_log %}
+            <p>{{ line }}</p>
+        {% endfor %}
+    </div>
+    <a href="{% url 'index' %}">На главную</a>
+{% endblock %}

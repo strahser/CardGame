@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Start Battle{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <h1>Start Battle</h1>
+        <form method="post" action="{% url 'start_battle' %}">
+            {% csrf_token %}
+            <button type="submit" name="auto_battle" value="true">Auto battle</button>
+         </form>
+        <form method="post" action="{% url 'start_battle' %}">
+            {% csrf_token %}
+            <button type="submit" >Start Battle</button>
+         </form>
+    </div>
+{% endblock %}
