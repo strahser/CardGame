@@ -1,12 +1,43 @@
 # views.py
 from django.shortcuts import render, redirect
-from .BattleState import CardState, SkillState, BattleState
-from .models import Hero, Monster, Skill
-
+from .models import Hero, Monster, Skill, CharacterType
+from .battle_state import BattleState, CardState, SkillState
 import logging
+from rest_framework import viewsets
+from .serializers import HeroSerializer, MonsterSerializer, SkillSerializer
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.request import Request
+from django.urls import reverse
 
 # Создаем логгер
 logger = logging.getLogger(__name__)
+
+
+class SkillViewSet(viewsets.ModelViewSet):
+    queryset = Skill.objects.all()
+    serializer_class = SkillSerializer
+
+
+class HeroViewSet(viewsets.ModelViewSet):
+    queryset = Hero.objects.all()
+    serializer_class = HeroSerializer
+
+
+class MonsterViewSet(viewsets.ModelViewSet):
+    queryset = Monster.objects.all()
+    serializer_class = MonsterSerializer
+
+
+class BattleViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['get'])
+    def monster_turn(self, request):
+        if 'battle_state' not in request.session:
+            return Response({"message": "Игра не начата"}, status=400)
+        battle_state = BattleState.from_dict(request.session['battle_state'])
+        battle_state.process_monster_turn()
+        request.session['battle_state'] = battle_state.to_dict()
+        return Response(battle_state.to_dict())
 
 
 def create_initial_data(request):
@@ -95,6 +126,8 @@ def start_game(request):
                            ) for monster in monsters
                        ]
         battle_state = BattleState(participants=participants, battle_log="")
+
+        logger.debug(battle_state.to_dict())  # Использем наш логгер
         # Сериализуем все данные
         request.session['battle_state'] = battle_state.to_dict()
 
@@ -124,18 +157,13 @@ def game_play(request):
 
         if current_participant.is_character_type == 'HERO' and current_participant.health > 0:
             battle_state.process_hero_turn(hero_id, target_id, action, skill_index)
-
-        next_participant = battle_state.get_next_participant()
-        while next_participant and next_participant.is_character_type == 'MONSTER':
-            battle_state.process_monster_turn()
-            next_participant = battle_state.get_next_participant()
+            battle_state.handle_monster_turns()
+            request.session['battle_state'] = battle_state.to_dict()
 
     # Начинаем новый раунд, если все персонажи сделали ход
     if not battle_state.get_active_participant():
         battle_state.start_new_round()
-
-    # Сохраняем состояние игры после действий и начала раунда
-    request.session['battle_state'] = battle_state.to_dict()
+        request.session['battle_state'] = battle_state.to_dict()
 
     # Получаем участников для рендера
     participants = battle_state.participants

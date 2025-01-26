@@ -119,27 +119,38 @@ class BattleState:
                 target.health -= damage
                 self.battle_log += f"\n{hero.name} использовал скил {skill.name} на {target.name} и нанес {damage} урона."
 
+        hero.active = False
         self.update_participants()
+
+    def handle_monster_turns(self):
+        next_participant = self.get_next_participant()
+        while next_participant and next_participant.is_character_type == 'MONSTER':
+            self.process_monster_turn()
+            next_participant = self.get_next_participant()
 
     def process_monster_turn(self):
         active_monster = self.get_active_participant()
 
-        if active_monster and active_monster.is_character_type == 'MONSTER':
-            available_heroes = [hero for hero in self.participants if
-                                hero.health > 0 and hero.active and hero.is_character_type == 'HERO']
-            if available_heroes:
-                target = random.choice(available_heroes)
-                if active_monster.skills:
-                    skill_index = random.randint(0, len(active_monster.skills) - 1)
-                    skill = active_monster.skills[skill_index]
-                    damage = skill.damage
-                    target.health -= damage
-                    self.battle_log += f"\n{active_monster.name} использовал скил {skill.name} на {target.name} и нанес {damage} урона."
-                else:
-                    damage = active_monster.attack
-                    target.health -= damage
-                    self.battle_log += f"\n{active_monster.name} атаковал {target.name} и нанес {damage} урона."
-            self.update_participants()
+        if not active_monster or active_monster.is_character_type != 'MONSTER':
+            return
+
+        available_heroes = [hero for hero in self.participants if
+                            hero.health > 0 and hero.active and hero.is_character_type == 'HERO']
+        if available_heroes:
+            target = random.choice(available_heroes)
+            if active_monster.skills:
+                skill_index = random.randint(0, len(active_monster.skills) - 1)
+                skill = active_monster.skills[skill_index]
+                damage = skill.damage
+                target.health -= damage
+                self.battle_log += f"\n{active_monster.name} использовал скил {skill.name} на {target.name} и нанес {damage} урона."
+            else:
+                damage = active_monster.attack
+                target.health -= damage
+                self.battle_log += f"\n{active_monster.name} атаковал {target.name} и нанес {damage} урона."
+
+        active_monster.active = False
+        self.update_participants()
 
     def start_new_round(self):
         for p in self.participants:
