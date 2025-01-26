@@ -1,103 +1,77 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Игровой процесс</title>
+    <title>Battle</title>
     <style>
-        body {
-            font-family: sans-serif;
-            margin: 20px;
-        }
-        h1 {
-            margin-bottom: 20px;
-        }
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-        li {
-            margin-bottom: 5px;
-        }
-        h2 {
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-        form {
+        .battle-log {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 5px;
             margin-top: 10px;
         }
-        select, button {
-            padding: 8px 12px;
-            margin-right: 5px;
-            font-size: 14px;
-        }
-        pre {
-            background-color: #f0f0f0;
-            padding: 10px;
-            border: 1px solid #ddd;
-            overflow: auto;
-            white-space: pre-wrap; /* Allow text wrap */
-        }
-        a {
-            display: block;
-            margin-top: 20px;
-            text-decoration: none;
-             color: #007bff;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
         .game-over {
-            margin-top: 20px;
-            font-size: 18px;
-             color: red;
+            color: red;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <h1>Бой</h1>
+    <h1>Battle</h1>
 
     {% if message %}
         <p class="game-over">{{ message }}</p>
     {% else %}
 
-    <h2>Участники</h2>
-    <ul>
-        {% for participant in participants %}
-            <li>
-                {{ participant.entity.name }}
-                (Здоровье: {{ participant.entity.health }}, Инициатива: {{ participant.entity.initiative }})
-                 {% if participant.is_monster %} (Монстр) {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
+        <h2>Участники</h2>
+        <ul>
+            {% for participant in participants %}
+                <li>
+                    {{ participant.name }}
+                    (Здоровье: {{ participant.health }}, Инициатива: {{ participant.initiative }})
+                    {% if participant.is_character_type == 'MONSTER' %} (Монстр) {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+
         {% if current_participant %}
-            <h2>Текущий ход: {{ current_participant.entity.name }}</h2>
-         {% if not current_participant.is_monster and current_participant.entity.health > 0 %}
-                <form method="post">
-                  {% csrf_token %}
-                  <input type="hidden" name="hero_id" value="{{ current_participant.entity.id }}">
-                  <select name="target_id">
-                    {% for participant in participants %}
-                      {% if participant.is_monster and participant.entity.health > 0 %}
-                        <option value="{{ participant.entity.id }}">{{ participant.entity.name }}</option>
-                      {% endif %}
-                    {% endfor %}
-                  </select>
-                  <button type="submit" name="action" value="attack">Обычная атака</button>
-                   {% for skill in current_participant.entity.skills %}
-                   <button type="submit" name="action" value="skill">Использовать скилл {{skill.name}} ({{skill.damage}})
-                    <input type="hidden" name="skill_index" value="{{ forloop.counter0 }}">
-                   </button>
-                   {% endfor %}
-                </form>
-              {% endif %}
-            {% endif %}
+            <h2>Текущий ход: {{ current_participant.name }}</h2>
+             <form method="post">
+                    {% csrf_token %}
+                  {% if current_participant.is_character_type == 'HERO' and current_participant.health > 0 %}
+
+                    <input type="hidden" name="hero_id" value="{{ current_participant.id }}">
+
+                    {% if battle.monsters %}
+                        <select name="target_id">
+                            {% for target in battle.monsters %}
+                                {% if target.health > 0 %}
+                                    <option value="{{ target.id }}">{{ target.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                         </select>
+                    {% endif %}
+
+                    <button type="submit" name="action" value="attack">Обычная атака</button>
+
+                   {% if current_participant.skills %}
+                     {% for skill in current_participant.skills %}
+                       <button type="submit" name="action" value="skill">Использовать скилл {{skill.name}} ({{skill.damage}})
+                            <input type="hidden" name="skill_index" value="{{ forloop.counter0 }}">
+                       </button>
+                     {% endfor %}
+                    {% endif %}
+                  {% endif %}
+                 </form>
+        {% endif %}
 
 
         <h3>Лог боя:</h3>
-        <pre>{{ battle.battle_log }}</pre>
-  {% endif %}
-   <a href="{% url 'start_game' %}">Новая игра</a>
+        <pre class="battle-log">{{ battle.battle_log }}</pre>
+    {% endif %}
+     <form method="post" action="{% url 'start_game' %}">
+        {% csrf_token %}
+        <button type="submit">Новая игра</button>
+     </form>
 </body>
 </html>

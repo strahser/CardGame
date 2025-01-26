@@ -1,16 +1,13 @@
 # views.py
 from django.shortcuts import render, redirect
-from .models import Hero, Monster, Battle
-import random
-import json
+from .BattleState import CardState, SkillState, BattleState
+from .models import Hero, Monster, Skill
 
 import logging
-logging.basicConfig(level=logging.DEBUG,
-                    filename="app.log",
-                    filemode="w",  # "a" для добавления, "w" для перезаписи
-                    format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s')
 
+# Создаем логгер
 logger = logging.getLogger(__name__)
+
 
 def create_initial_data(request):
     """Создает начальные данные (героев и монстров) если их нет."""
@@ -25,13 +22,39 @@ def create_initial_data(request):
         {"name": "Герой 3", "health": 120, "attack": 8, "initiative": 5, 'skills': [{'name': 'Защита', 'damage': 25}]},
     ]
     monsters_data = [
-        {"name": "Монстр 1", "health": 50, "attack": 10, "initiative": 6},
-        {"name": "Монстр 2", "health": 60, "attack": 8, "initiative": 5},
-        {"name": "Монстр 3", "health": 70, "attack": 12, "initiative": 4},
+        {"name": "Монстр 1", "health": 50, "attack": 10, "initiative": 6, 'skills': [{'name': 'Укус', 'damage': 15}]},
+        {"name": "Монстр 2", "health": 60, "attack": 8, "initiative": 5, 'skills': [{'name': 'Ранение', 'damage': 20}]},
+        {"name": "Монстр 3", "health": 70, "attack": 12, "initiative": 4, 'skills': [{'name': 'Яд', 'damage': 10}]},
     ]
 
-    heroes = [Hero.objects.create(**data) for data in heroes_data]
-    monsters = [Monster.objects.create(**data) for data in monsters_data]
+    # Создаем все навыки
+    all_skills = {}
+    for data in heroes_data + monsters_data:
+        for skill_data in data.get('skills', []):
+            skill, created = Skill.objects.get_or_create(**skill_data)
+            all_skills[skill_data['name']] = skill
+
+    # Создаем всех героев и добавляем навыки
+    for hero_data in heroes_data:
+        hero = Hero.objects.create(
+            name=hero_data['name'],
+            health=hero_data['health'],
+            attack=hero_data['attack'],
+            initiative=hero_data['initiative'],
+        )
+        for skill_data in hero_data['skills']:
+            hero.skills.add(all_skills[skill_data['name']])
+
+    # Создаем всех монстров и добавляем навыки
+    for monster_data in monsters_data:
+        monster = Monster.objects.create(
+            name=monster_data['name'],
+            health=monster_data['health'],
+            attack=monster_data['attack'],
+            initiative=monster_data['initiative'],
+        )
+        for skill_data in monster_data.get('skills', []):
+            monster.skills.add(all_skills[skill_data['name']])
 
     return render(request, 'Cards/data_created.html', {'message': 'Данные успешно созданы!'})
 
@@ -41,83 +64,83 @@ def start_game(request):
     if request.method == 'POST':
         # Очищаем сессию
         if 'battle_state' in request.session:
-          del request.session['battle_state']
+            del request.session['battle_state']
         # Получаем героев и монстров из БД
         heroes = list(Hero.objects.all())
         monsters = list(Monster.objects.all())
 
-        battle = Battle()
-        battle.heroes = heroes # записываем id героев
-        battle.monsters = monsters # записываем id монстров
-        battle.current_turn = 0
-        battle.battle_log = ""
+        # Создаем BattleState
+        participants = [
+                           CardState(
+                               id=hero.id,
+                               name=hero.name,
+                               health=hero.health,
+                               attack=hero.attack,
+                               initiative=hero.initiative,
+                               active=hero.active,
+                               is_character_type=hero.is_character_type,
+                               skills=[SkillState(name=skill.name, damage=skill.damage) for skill in hero.skills.all()]
+                           ) for hero in heroes
+                       ] + [
+                           CardState(
+                               id=monster.id,
+                               name=monster.name,
+                               health=monster.health,
+                               attack=monster.attack,
+                               initiative=monster.initiative,
+                               active=monster.active,
+                               is_character_type=monster.is_character_type,
+                               skills=[SkillState(name=skill.name, damage=skill.damage) for skill in
+                                       monster.skills.all()]
+                           ) for monster in monsters
+                       ]
+        battle_state = BattleState(participants=participants, battle_log="")
         # Сериализуем все данные
-        request.session['battle_state'] = battle.to_dict()
+        request.session['battle_state'] = battle_state.to_dict()
 
         return redirect('game_play')
     return render(request, 'Cards/start_game.html')
 
 
 def game_play(request):
-    """Отображает текущее состояние боя и обрабатывает действия игрока"""
     if 'battle_state' not in request.session:
         return redirect('start_game')
 
-    battle_data = request.session['battle_state']
-    battle = Battle.from_dict(battle_data)
+    battle_state = BattleState.from_dict(request.session['battle_state'])
 
-    # Получаем активных участников
-    participants = battle.determine_turn_order(active_only=True)
-
-    # Обработка окончания боя
-    if battle.battle_over():
+    if battle_state.is_battle_over():
         del request.session['battle_state']
-        return render(request, 'Cards/game_play.html', {'battle': battle, 'message': 'Игра окончена. Обновите страницу для новой игры.', 'game_over': True})
+        return render(request, 'Cards/game_play.html', {'battle': battle_state,
+                                                        'message': 'Игра окончена. Обновите страницу для новой игры.',
+                                                        'game_over': True})
 
-    # Обработка хода игрока
-    current_participant = participants[battle.current_turn % len(participants)] if participants else None
+    current_participant = battle_state.get_active_participant()
 
-    if request.method == 'POST' and current_participant and not current_participant['is_monster']:
+    if request.method == 'POST' and current_participant:
         action = request.POST.get('action')
         hero_id = request.POST.get('hero_id')
         target_id = request.POST.get('target_id')
         skill_index = request.POST.get('skill_index', None)
 
-        hero = next((h for h in battle.heroes if h.id == int(hero_id)), None)
-        target = next((m for m in battle.monsters if m.id == int(target_id)), None)
+        if current_participant.is_character_type == 'HERO' and current_participant.health > 0:
+            battle_state.process_hero_turn(hero_id, target_id, action, skill_index)
 
-        if action == 'attack':
-            message = hero.normal_attack(target)
-            battle.battle_log += f"\n{message}"
-        elif action == 'skill' and skill_index is not None:
-            message = hero.use_skill(int(skill_index), target)
-            battle.battle_log += f"\n{message}"
+        next_participant = battle_state.get_next_participant()
+        while next_participant and next_participant.is_character_type == 'MONSTER':
+            battle_state.process_monster_turn()
+            next_participant = battle_state.get_next_participant()
 
-        hero.active = False  # делаем героя неактивным
+    # Начинаем новый раунд, если все персонажи сделали ход
+    if not battle_state.get_active_participant():
+        battle_state.start_new_round()
 
+    # Сохраняем состояние игры после действий и начала раунда
+    request.session['battle_state'] = battle_state.to_dict()
 
-    # Пересчитываем участников и делаем ходы монстров
-    participants = battle.determine_turn_order(active_only=True)
-    while participants and participants[battle.current_turn % len(participants)]['is_monster']:
-        current_monster = participants[battle.current_turn % len(participants)]['entity']
-        battle.monster_turn()
-        current_monster.active = False
-        battle.current_turn += 1  # увеличиваем ход монстра
-        participants = battle.determine_turn_order(active_only=True)
+    # Получаем участников для рендера
+    participants = battle_state.participants
+    current_participant = battle_state.get_active_participant()
 
-
-    # Начало нового раунда, если все персонажи сделали ход
-    if not participants:
-        for hero in battle.heroes:
-            hero.active = True
-        for monster in battle.monsters:
-            monster.active = True
-        battle.current_turn = 0
-        participants = battle.determine_turn_order(active_only=True)
-
-    # Сохраняем состояние игры
-    request.session['battle_state'] = battle.to_dict()
-
-    current_participant = participants[battle.current_turn % len(participants)] if participants else None
-
-    return render(request, 'Cards/game_play.html', {'battle': battle, 'participants': participants, 'current_participant': current_participant, 'game_over': False})
+    return render(request, 'Cards/game_play.html',
+                  {'battle': battle_state, 'participants': participants,
+                   'current_participant': current_participant, 'game_over': False})
